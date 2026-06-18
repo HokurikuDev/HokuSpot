@@ -43,6 +43,21 @@ pending**. Once approved, edits require a moderator (this is enforced by
 Row-Level Security in `sql/02_policies.sql`, not just hidden in the UI —
 even a technically savvy user can't bypass it by calling the API directly).
 
+**Editing, in practice:**
+- A regular user edits their own still-pending submission via **"My
+  submissions"** in the auth pill — pending rows show an "Edit" button;
+  approved/rejected rows don't (matches what RLS would allow anyway).
+- A moderator edits *any* place, regardless of status, via the **"Edit"**
+  button on that place's detail panel (only visible to moderators/admins).
+  This is the only way to change an already-approved place's content —
+  fix a typo, update a description, swap a photo, even re-drop the pin if
+  the location was off.
+
+Both paths open the same form and call the same `Api.updatePlace()`
+function — the function itself doesn't check who's allowed to edit what;
+RLS does. Tags can be changed (added/removed) and existing photos can be
+removed (with new ones added) in both flows.
+
 ---
 
 ## Who can moderate

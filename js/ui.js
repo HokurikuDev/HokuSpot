@@ -39,10 +39,12 @@ const UI = (() => {
           ${currentProfile.role !== 'user' ? `<span class="role-badge">${escapeHtml(currentProfile.role)}</span>` : ''}
         </span>
         <button id="btn-add-place" class="btn btn--accent">+ Add a place</button>
+        <button id="btn-my-submissions" class="btn btn--ghost">My submissions</button>
         ${currentProfile.role !== 'user' ? '<button id="btn-moderate" class="btn btn--ghost">Review queue</button>' : ''}
         <button id="btn-sign-out" class="btn btn--ghost">Sign out</button>
       `;
       $('#btn-add-place')?.addEventListener('click', openSubmissionForm);
+      $('#btn-my-submissions')?.addEventListener('click', openMySubmissions);
       $('#btn-sign-out')?.addEventListener('click', async () => {
         await Api.signOut();
         await refreshAuthUI();
@@ -166,6 +168,9 @@ const UI = (() => {
         ${tags.length ? `<div class="tag-list">${tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
         <div class="panel-actions">
           <button class="btn btn--ghost btn--small" id="btn-directions">Directions</button>
+          ${currentProfile && currentProfile.role !== 'user'
+            ? '<button class="btn btn--ghost btn--small" id="btn-edit-place">Edit</button>'
+            : ''}
           <button class="btn btn--ghost btn--small" id="btn-report">Report an issue</button>
         </div>
       </div>
@@ -176,6 +181,10 @@ const UI = (() => {
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`, '_blank', 'noopener');
     });
     $('#btn-report').addEventListener('click', () => openReportForm(place.id));
+    $('#btn-edit-place')?.addEventListener('click', () => {
+      closePlaceDetail();
+      openEditForm(place);
+    });
 
     MapController.flyTo(place.lng, place.lat);
   }
@@ -209,50 +218,87 @@ const UI = (() => {
   }
 
   // -------------------------------------------------------------------
-  // Submission form
+  // Submission / edit form — shared by THREE entry points:
+  //   1. "+ Add a place"            -> openSubmissionForm()        (create)
+  //   2. "My submissions" list      -> openEditForm(place, 'own')  (edit own pending)
+  //   3. Detail panel "Edit" button -> openEditForm(place, 'mod')  (moderator edit any place)
   //
-  // This used to open inside the full-screen modal (#modal-root), which
-  // covers the entire viewport including the map — so "click the map to
-  // drop a pin" was never actually possible; the click had nowhere to
-  // land but the modal backdrop. It now opens in its own slide-in panel
-  // (#submit-panel, same pattern as #detail-panel) that leaves the map
-  // visible and clickable beside it. Pin placement itself is delegated to
-  // MapController.startPinPicker(), which owns a single click listener
+  // The form itself doesn't enforce who can do what — RLS does that (see
+  // sql/02_policies.sql). This function only decides what to pre-fill and
+  // which Api call to make on submit.
+  //
+  // It opens in its own slide-in panel (#submit-panel, same pattern as
+  // #detail-panel) rather than the full-screen modal the very first
+  // version used — that modal completely covered the map, which made
+  // "click the map to drop a pin" impossible. Pin placement is delegated
+  // to MapController.startPinPicker(), which owns a single click listener
   // and a visible marker for the chosen point.
   // -------------------------------------------------------------------
-  let pendingPin = null; // { lat, lng } chosen via map click while the panel is open
+  let pendingPin = null; // { lat, lng } — current chosen location, create or edit
+  let existingPhotos = []; // photos already on the place, when editing
 
   function openSubmissionForm() {
+    renderSubmitPanel({ mode: 'create' });
+  }
+
+  function openEditForm(place) {
+    renderSubmitPanel({ mode: 'edit', place });
+  }
+
+  function renderSubmitPanel({ mode, place = null }) {
     const cats = Categories.all();
     const panel = $('#submit-panel');
-    pendingPin = null;
+    const isEdit = mode === 'edit';
+
+    pendingPin = isEdit ? { lat: place.lat, lng: place.lng } : null;
+    existingPhotos = isEdit ? [...(place.place_photos || [])].sort((a, b) => a.sort_order - b.sort_order) : [];
+    const currentTags = isEdit ? (place.place_tags || []).map((pt) => pt.tags?.label).filter(Boolean) : [];
+
+    const pinReadoutText = pendingPin
+      ? `Pinned at ${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`
+      : 'No location chosen yet';
 
     panel.innerHTML = `
       <div class="submit-panel__header">
-        <h2>Add a place</h2>
+        <h2>${isEdit ? 'Edit place' : 'Add a place'}</h2>
         <button class="modal__close" id="btn-close-submit" aria-label="Close">&times;</button>
       </div>
       <div class="submit-panel__body">
         <form id="form-submit" class="stack">
-          <label>Name <input type="text" name="name" required maxlength="120" /></label>
+          <label>Name <input type="text" name="name" required maxlength="120" value="${escapeHtml(place?.name || '')}" /></label>
           <label>Category
             <select name="categoryId" required>
-              ${cats.map((c) => `<option value="${c.id}">${escapeHtml(c.label_en)}</option>`).join('')}
+              ${cats.map((c) => `<option value="${c.id}" ${place?.category_id === c.id ? 'selected' : ''}>${escapeHtml(c.label_en)}</option>`).join('')}
             </select>
           </label>
           <div class="pin-picker">
             <p class="form-hint">Click anywhere on the map to drop a pin at the location. Click again to move it.</p>
-            <p id="pin-readout" class="pin-readout">No location chosen yet</p>
+            <p id="pin-readout" class="pin-readout ${pendingPin ? 'is-set' : ''}">${pinReadoutText}</p>
           </div>
-          <label>Address <input type="text" name="address" maxlength="200" placeholder="Optional — helps others find it" /></label>
-          <label>Description <textarea name="description" rows="3" maxlength="1000"></textarea></label>
-          <label>What's interesting about it? <textarea name="highlights" rows="3" maxlength="1000" placeholder="History, access notes, best time to visit…"></textarea></label>
-          <label>Tags <input type="text" name="tags" placeholder="comma, separated, tags" /></label>
-          <label>Photo URL <input type="url" name="photoUrl" placeholder="https://… (optional)" /></label>
-          <label>Or upload a photo <input type="file" name="photoFile" accept="image/jpeg,image/png,image/webp" /></label>
+          <label>Address <input type="text" name="address" maxlength="200" placeholder="Optional — helps others find it" value="${escapeHtml(place?.address || '')}" /></label>
+          <label>Description <textarea name="description" rows="3" maxlength="1000">${escapeHtml(place?.description || '')}</textarea></label>
+          <label>What's interesting about it? <textarea name="highlights" rows="3" maxlength="1000" placeholder="History, access notes, best time to visit…">${escapeHtml(place?.highlights || '')}</textarea></label>
+          <label>Tags <input type="text" name="tags" placeholder="comma, separated, tags" value="${escapeHtml(currentTags.join(', '))}" /></label>
+          ${isEdit && existingPhotos.length > 0 ? `
+            <div class="existing-photos">
+              <p class="form-hint">Current photos — remove any you don't want to keep:</p>
+              <div id="existing-photo-list" class="existing-photo-list">
+                ${existingPhotos.map((p) => `
+                  <div class="existing-photo" data-photo-id="${p.id}">
+                    <img src="${escapeHtml(p.storage_path ? Api.getPhotoPublicUrl(p.storage_path) : p.external_url)}" alt="" />
+                    <button type="button" class="existing-photo__remove" data-photo-id="${p.id}" aria-label="Remove photo">&times;</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+          <label>${isEdit ? 'Add a photo URL' : 'Photo URL'} <input type="url" name="photoUrl" placeholder="https://… (optional)" /></label>
+          <label>${isEdit ? 'Or upload an additional photo' : 'Or upload a photo'} <input type="file" name="photoFile" accept="image/jpeg,image/png,image/webp" /></label>
           <p class="form-error" id="submit-error" hidden></p>
-          <p class="form-hint">Your submission goes to a moderator for review before it appears on the public map.</p>
-          <button type="submit" class="btn btn--accent btn--block">Submit for review</button>
+          ${isEdit
+            ? `<p class="form-hint">${place.status === 'pending' ? 'Saving will keep this submission pending review.' : 'This place is already live — changes will be visible immediately.'}</p>`
+            : `<p class="form-hint">Your submission goes to a moderator for review before it appears on the public map.</p>`}
+          <button type="submit" class="btn btn--accent btn--block">${isEdit ? 'Save changes' : 'Submit for review'}</button>
         </form>
       </div>
     `;
@@ -265,9 +311,26 @@ const UI = (() => {
         readout.textContent = `Pinned at ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         readout.classList.add('is-set');
       }
-    });
+    }, pendingPin);
 
     $('#btn-close-submit').addEventListener('click', closeSubmissionForm);
+
+    if (isEdit) {
+      $all('.existing-photo__remove').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const photoId = btn.dataset.photoId;
+          btn.disabled = true;
+          try {
+            await Api.removePhotoFromPlace(photoId);
+            $(`.existing-photo[data-photo-id="${photoId}"]`)?.remove();
+            existingPhotos = existingPhotos.filter((p) => p.id !== photoId);
+          } catch (err) {
+            showToast(`Couldn't remove photo: ${err.message}`, true);
+            btn.disabled = false;
+          }
+        });
+      });
+    }
 
     $('#form-submit').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -282,26 +345,45 @@ const UI = (() => {
 
       const fd = new FormData(e.target);
       const tagLabels = (fd.get('tags') || '').split(',').map((t) => t.trim()).filter(Boolean);
-      const photos = [];
+      const newPhotos = [];
       const photoUrl = fd.get('photoUrl');
       const photoFile = fd.get('photoFile');
-      if (photoUrl) photos.push({ externalUrl: photoUrl });
-      if (photoFile && photoFile.size > 0) photos.push({ file: photoFile });
+      if (photoUrl) newPhotos.push({ externalUrl: photoUrl });
+      if (photoFile && photoFile.size > 0) newPhotos.push({ file: photoFile });
 
       try {
-        await Api.submitPlace({
-          name: fd.get('name'),
-          description: fd.get('description') || null,
-          highlights: fd.get('highlights') || null,
-          address: fd.get('address') || null,
-          categoryId: fd.get('categoryId'),
-          lat: pendingPin.lat,
-          lng: pendingPin.lng,
-          tagLabels,
-          photos,
-        });
-        closeSubmissionForm();
-        showToast('Submitted! It will appear once a moderator approves it.');
+        if (isEdit) {
+          await Api.updatePlace(place.id, {
+            name: fd.get('name'),
+            description: fd.get('description') || null,
+            highlights: fd.get('highlights') || null,
+            address: fd.get('address') || null,
+            categoryId: fd.get('categoryId'),
+            lat: pendingPin.lat,
+            lng: pendingPin.lng,
+            tagLabels,
+            newPhotos,
+          });
+          closeSubmissionForm();
+          showToast('Changes saved.');
+          if (place.status === 'approved') {
+            MapController.refreshPlacesInView();
+          }
+        } else {
+          await Api.submitPlace({
+            name: fd.get('name'),
+            description: fd.get('description') || null,
+            highlights: fd.get('highlights') || null,
+            address: fd.get('address') || null,
+            categoryId: fd.get('categoryId'),
+            lat: pendingPin.lat,
+            lng: pendingPin.lng,
+            tagLabels,
+            photos: newPhotos,
+          });
+          closeSubmissionForm();
+          showToast('Submitted! It will appear once a moderator approves it.');
+        }
       } catch (err) {
         errEl.textContent = err.message;
         errEl.hidden = false;
@@ -313,6 +395,7 @@ const UI = (() => {
     $('#submit-panel').classList.remove('is-open');
     MapController.stopPinPicker();
     pendingPin = null;
+    existingPhotos = [];
   }
 
   // -------------------------------------------------------------------
@@ -373,6 +456,60 @@ const UI = (() => {
         showToast(`Error: ${err.message}`, true);
       }
     }, { once: false });
+  }
+
+  // -------------------------------------------------------------------
+  // My submissions — lets a user see the status of everything they've
+  // submitted and edit anything still pending (RLS only allows editing
+  // while status='pending', so approved/rejected rows are shown read-only
+  // here; editing an already-approved place is a moderator-only action,
+  // done from the place detail panel's "Edit" button instead).
+  // -------------------------------------------------------------------
+  async function openMySubmissions() {
+    openModal(`<div id="my-submissions" class="panel-loading">Loading your submissions…</div>`, { title: 'My submissions', wide: true });
+    try {
+      const mine = await Api.getMySubmissions();
+      renderMySubmissions(mine);
+    } catch (err) {
+      $('#my-submissions').innerHTML = `<div class="panel-error">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  function renderMySubmissions(mine) {
+    const root = $('#my-submissions');
+    if (mine.length === 0) {
+      root.innerHTML = `<p class="empty-state">You haven't submitted any places yet.</p>`;
+      return;
+    }
+
+    const statusLabel = { pending: 'Pending review', approved: 'Live on map', rejected: 'Not approved' };
+
+    root.innerHTML = `<ul class="mod-list">${mine.map((p) => `
+      <li class="mod-item" data-id="${p.id}">
+        <div class="mod-item__info">
+          <strong>${escapeHtml(p.name)}</strong>
+          <span class="mod-item__meta">
+            ${escapeHtml(Categories.get(p.category_id).label_en)} ·
+            <span class="status-pill status-pill--${p.status}">${escapeHtml(statusLabel[p.status] || p.status)}</span>
+          </span>
+          ${p.status === 'rejected' && p.rejection_reason ? `<p class="rejection-reason">Reason: ${escapeHtml(p.rejection_reason)}</p>` : ''}
+        </div>
+        <div class="mod-item__actions">
+          ${p.status === 'pending' ? '<button class="btn btn--small btn--accent" data-action="edit">Edit</button>' : ''}
+        </div>
+      </li>`).join('')}</ul>`;
+
+    root.addEventListener('click', async (e) => {
+      if (e.target.dataset.action !== 'edit') return;
+      const placeId = e.target.closest('.mod-item').dataset.id;
+      try {
+        const place = await Api.getPlaceDetail(placeId);
+        closeModal();
+        openEditForm(place);
+      } catch (err) {
+        showToast(`Couldn't open this place for editing: ${err.message}`, true);
+      }
+    });
   }
 
   // -------------------------------------------------------------------

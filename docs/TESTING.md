@@ -110,6 +110,33 @@ safe to run anytime:
 node test/moderation-embed.test.js
 ```
 
+### Edit-flow tests
+
+Two files cover the two edit functions (editing your own pending
+submission via "My submissions", and a moderator editing an
+already-approved place via the detail panel's "Edit" button):
+
+```bash
+# Api-layer checks: confirms Api.updatePlace sends the right PATCH body
+# (including re-dropped lat/lng) and never leaks status/featured.
+node test/edit-flows.test.js
+
+# Full click-through: simulates a logged-in moderator, drives both
+# entry points through real DOM clicks, and saves screenshots.
+(python3 -m http.server 8080 --bind 127.0.0.1 &) ; sleep 1.5 ; node test/edit-flows-visual.test.js
+```
+
+`edit-flows-visual.test.js` fakes a logged-in session by stubbing
+`Api.getSession`/`Api.getMyProfile` directly rather than reverse-
+engineering supabase-js's internal localStorage format — see the comment
+block in that file for why, and for a real gotcha worth knowing if you
+write similar tests: top-level `const`/`let` declared in a plain
+`<script>` tag (like `const Api = {...}` in `js/supabase-client.js`)
+do **not** become properties of `window`, even though the bare
+identifier is still globally accessible to other script tags on the same
+page. `typeof window.Api` is always `'undefined'`; check the bare `Api`
+identifier instead.
+
 ## 5. Live backend check (against your real Supabase project, once configured)
 
 Unlike the e2e test above, this one makes **no mocked network calls** — it

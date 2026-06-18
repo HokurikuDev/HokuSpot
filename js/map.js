@@ -211,10 +211,21 @@ const MapController = (() => {
   let pinPickerHandler = null;
   let pinPickerMarker = null;
 
-  function startPinPicker(onPick) {
+  function startPinPicker(onPick, initial = null) {
     stopPinPicker(); // guard against double-start leaving two listeners active
 
     map.getCanvas().style.cursor = 'crosshair';
+
+    if (initial) {
+      // Editing an existing place — show its current location right away
+      // rather than waiting for the user to click, so the panel and map
+      // agree on the starting point.
+      const el = document.createElement('div');
+      el.className = 'pin-picker-marker';
+      pinPickerMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([initial.lng, initial.lat])
+        .addTo(map);
+    }
 
     pinPickerHandler = (e) => {
       const { lat, lng } = e.lngLat;

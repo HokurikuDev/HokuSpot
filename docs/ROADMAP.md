@@ -71,22 +71,34 @@ actively watching.
 These weren't asked for explicitly, so they're deliberately left out of
 the v1 build, but the schema/architecture already accommodates them:
 
-- **"My submissions" screen** — `Api.getMySubmissions()` already exists in
-  `js/supabase-client.js` and returns a user's own places with their
-  status and rejection reason; there's just no UI screen wired up to call
-  it yet. Would slot naturally next to the existing auth-pill dropdown.
 - **Reports inbox in the moderation UI** — currently you'd check the
   `place_reports` table directly in Supabase; see `docs/MODERATION.md`.
 - **"Unpublish" button for already-approved places** — currently a manual
   Table Editor edit; `Api.rejectPlace()` already supports being called on
-  approved places per RLS, just needs a UI affordance.
-- **Editing an approved place** — right now only moderators can edit a
-  place once it's approved (by design, see `sql/02_policies.sql`). A
-  "suggest an edit" flow (storing a proposed diff for moderator approval,
-  rather than allowing direct edits) would fit the same approval pattern
-  already used for new submissions.
+  approved places per RLS, just needs a UI affordance. (Note: a moderator
+  *editing* an approved place's content is now built — see below — this
+  item is specifically about taking a place off the public map entirely.)
 - **Tag moderation** — see the note at the bottom of `docs/MODERATION.md`.
 - **i18n** — category labels already have a `label_ja` column in the
   database (currently unused by the frontend, which only renders
   `label_en`). A language toggle could read that column with no schema
   change.
+
+## Done since the original v1 build
+
+- **"My submissions" screen** — built. Accessible via the "My
+  submissions" button in the auth pill. Lists every place you've
+  submitted with a status pill (pending / live / not approved) and a
+  rejection reason where relevant. Clicking "Edit" on a still-pending
+  submission opens the edit form, pre-filled.
+- **Editing an already-approved place** — built, as a moderator/admin-only
+  action. An "Edit" button appears on the place detail panel only when
+  signed in as a moderator or admin (`currentProfile.role !== 'user'` in
+  `js/ui.js`). Both this and the "edit your own pending submission" flow
+  above share one form (`renderSubmitPanel` in `js/ui.js`) and one Api
+  function (`Api.updatePlace`) — the function itself doesn't distinguish
+  who's allowed to call it on which place; RLS does (see
+  `sql/02_policies.sql`'s "Owners can edit their own pending submissions"
+  vs. "Moderators can update any place" policies). Re-dropping the pin,
+  changing tags, removing existing photos, and adding new ones are all
+  supported in both flows.

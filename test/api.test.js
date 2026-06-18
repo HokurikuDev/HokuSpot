@@ -200,6 +200,107 @@ function loadApiWithMock(mockClient) {
     assert.strictEqual(mock._tables.places.find((p) => p.id === 'p1').featured, true);
   });
 
+  console.log('\nApi.updatePlace ---------------------------------------------------------');
+  await test('updates only the scalar fields that were provided', async () => {
+    const mock = createMockSupabase({
+      places: [{ id: 'p1', name: 'Old Name', description: 'Old desc', category_id: 'tourist', lat: 1, lng: 1, status: 'pending' }],
+    });
+    const Api = loadApiWithMock(mock);
+    await Api.updatePlace('p1', { name: 'New Name' });
+
+    const place = mock._tables.places.find((p) => p.id === 'p1');
+    assert.strictEqual(place.name, 'New Name', 'name should be updated');
+    assert.strictEqual(place.description, 'Old desc', 'description should be untouched since it was not provided');
+  });
+
+  await test('updating lat/lng (re-dropping the pin) works', async () => {
+    const mock = createMockSupabase({
+      places: [{ id: 'p1', name: 'X', lat: 36.0, lng: 137.0, status: 'pending' }],
+    });
+    const Api = loadApiWithMock(mock);
+    await Api.updatePlace('p1', { lat: 36.95, lng: 136.45 });
+
+    const place = mock._tables.places.find((p) => p.id === 'p1');
+    assert.strictEqual(place.lat, 36.95);
+    assert.strictEqual(place.lng, 136.45);
+  });
+
+  await test('never sends status or featured, even if accidentally passed in', async () => {
+    // updatePlace's destructured params don't even include status/featured,
+    // so there's no code path that could leak them through — this test
+    // guards against a future refactor accidentally widening the signature.
+    const mock = createMockSupabase({
+      places: [{ id: 'p1', name: 'X', status: 'pending', featured: false }],
+    });
+    const Api = loadApiWithMock(mock);
+    await Api.updatePlace('p1', { name: 'Y', status: 'approved', featured: true });
+
+    const place = mock._tables.places.find((p) => p.id === 'p1');
+    assert.strictEqual(place.status, 'pending', 'status must remain unchanged — only approvePlace/rejectPlace may change it');
+    assert.strictEqual(place.featured, false, 'featured must remain unchanged — only setFeatured may change it');
+  });
+
+  await test('attaches new photos with sort_order continuing after existing ones', async () => {
+    const mock = createMockSupabase({
+      places: [{ id: 'p1', name: 'X', status: 'pending' }],
+      place_photos: [{ id: 'ph1', place_id: 'p1', external_url: 'https://example.com/a.jpg', sort_order: 0 }],
+    });
+    const Api = loadApiWithMock(mock);
+    mock._setSession({ user: { id: 'u1', email: 'alice@test.com' } });
+
+    await Api.updatePlace('p1', { newPhotos: [{ externalUrl: 'https://example.com/b.jpg' }] });
+
+    const photos = mock._tables.place_photos.filter((p) => p.place_id === 'p1');
+    assert.strictEqual(photos.length, 2);
+    const newPhoto = photos.find((p) => p.external_url === 'https://example.com/b.jpg');
+    assert.strictEqual(newPhoto.sort_order, 1, 'new photo should continue the sort_order sequence, not collide with existing');
+  });
+
+  console.log('\nApi.replaceTagsForPlace ---------------------------------------------------');
+  await test('adds new tags and removes ones no longer wanted, leaves unchanged tags alone', async () => {
+    const mock = createMockSupabase({
+      tags: [{ id: 1, label: 'sunset' }, { id: 2, label: 'free-entry' }, { id: 3, label: 'old-tag' }],
+      place_tags: [
+        { place_id: 'p1', tag_id: 1 }, // sunset - kept
+        { place_id: 'p1', tag_id: 3 }, // old-tag - should be removed
+      ],
+    });
+    const Api = loadApiWithMock(mock);
+
+    await Api.replaceTagsForPlace('p1', ['sunset', 'free-entry']);
+
+    const links = mock._tables.place_tags.filter((l) => l.place_id === 'p1');
+    const tagIds = links.map((l) => l.tag_id).sort();
+    assert.deepStrictEqual(tagIds, [1, 2], 'should end up with exactly sunset(1) and free-entry(2)');
+  });
+
+  await test('is a no-op when the desired tag set already matches', async () => {
+    const mock = createMockSupabase({
+      tags: [{ id: 1, label: 'sunset' }],
+      place_tags: [{ place_id: 'p1', tag_id: 1 }],
+    });
+    const Api = loadApiWithMock(mock);
+
+    await Api.replaceTagsForPlace('p1', ['sunset']);
+
+    const links = mock._tables.place_tags.filter((l) => l.place_id === 'p1');
+    assert.strictEqual(links.length, 1);
+    assert.strictEqual(links[0].tag_id, 1);
+  });
+
+  await test('removing all tags clears every link for that place', async () => {
+    const mock = createMockSupabase({
+      tags: [{ id: 1, label: 'sunset' }, { id: 2, label: 'free-entry' }],
+      place_tags: [{ place_id: 'p1', tag_id: 1 }, { place_id: 'p1', tag_id: 2 }],
+    });
+    const Api = loadApiWithMock(mock);
+
+    await Api.replaceTagsForPlace('p1', []);
+
+    const links = mock._tables.place_tags.filter((l) => l.place_id === 'p1');
+    assert.strictEqual(links.length, 0);
+  });
+
   console.log(`\n${passed} passed, ${failed} failed\n`);
   process.exit(failed > 0 ? 1 : 0);
 })();

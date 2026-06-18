@@ -36,6 +36,8 @@ function createMockSupabase(initialData = {}) {
     let selectCols = null;
     let isSingle = false;
     let orderCol = null;
+    let orderDesc = false;
+    let limitN = null;
     let pendingOp = null; // { type: 'insert'|'update'|'delete'|'upsert', payload }
 
     const builder = {
@@ -47,7 +49,8 @@ function createMockSupabase(initialData = {}) {
       gte(col, val) { filters.push({ type: 'gte', col, val }); return builder; },
       lte(col, val) { filters.push({ type: 'lte', col, val }); return builder; },
       in(col, val) { filters.push({ type: 'in', col, val }); return builder; },
-      order(col) { orderCol = col; return builder; },
+      order(col, opts) { orderCol = col; orderDesc = !!(opts && opts.ascending === false); return builder; },
+      limit(n) { limitN = n; return builder; },
       single() { isSingle = true; return builder; },
 
       insert(payload) {
@@ -125,7 +128,26 @@ function createMockSupabase(initialData = {}) {
 
       // select
       let rows = table.filter((row) => matchFilters(row, filters));
-      if (orderCol) rows = [...rows].sort((a, b) => (a[orderCol] > b[orderCol] ? 1 : -1));
+      if (orderCol) {
+        rows = [...rows].sort((a, b) => (a[orderCol] > b[orderCol] ? 1 : -1));
+        if (orderDesc) rows.reverse();
+      }
+      if (limitN != null) rows = rows.slice(0, limitN);
+
+      // The mock doesn't implement generic relational embedding (the
+      // real Supabase/PostgREST `select('foo ( bar )')` join syntax) —
+      // selectCols is otherwise ignored entirely. The one join shape
+      // actually exercised by tests (place_tags joined to tags, used by
+      // replaceTagsForPlace) is special-cased here rather than building
+      // a general-purpose join engine that could itself diverge subtly
+      // from real Postgres behavior and give false test confidence.
+      if (tableName === 'place_tags' && selectCols && selectCols.includes('tags')) {
+        rows = rows.map((row) => ({
+          ...row,
+          tags: tables.tags.find((t) => t.id === row.tag_id) || null,
+        }));
+      }
+
       if (isSingle) {
         if (rows.length === 0) return { data: null, error: { message: 'No rows found' } };
         return { data: rows[0], error: null };

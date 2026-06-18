@@ -212,11 +212,83 @@ const Api = {
     return data.publicUrl;
   },
 
-  async updateMyPendingPlace(placeId, updates) {
-    const { error } = await supabaseClient
-      .from('places')
-      .update(updates)
-      .eq('id', placeId);
+  async updatePlace(placeId, { name, description, highlights, address, categoryId, lat, lng, tagLabels, newPhotos }) {
+    // Used by BOTH edit flows — a regular user editing their own still-
+    // pending submission, and a moderator editing an already-approved
+    // place. The function itself doesn't distinguish between them; RLS
+    // (sql/02_policies.sql) is what actually decides whether this update
+    // is allowed to succeed for the calling user on this particular row:
+    //   - owners can update only while status='pending'
+    //   - moderators can update any place regardless of status
+    // Either way, status/featured are never touched here — only a
+    // moderator's separate approvePlace()/setFeatured() calls change those.
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (highlights !== undefined) updates.highlights = highlights;
+    if (address !== undefined) updates.address = address;
+    if (categoryId !== undefined) updates.category_id = categoryId;
+    if (lat !== undefined) updates.lat = lat;
+    if (lng !== undefined) updates.lng = lng;
+
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabaseClient.from('places').update(updates).eq('id', placeId);
+      if (error) throw error;
+    }
+
+    if (tagLabels !== undefined) {
+      await this.replaceTagsForPlace(placeId, tagLabels);
+    }
+
+    if (newPhotos && newPhotos.length > 0) {
+      const { data: existing } = await supabaseClient
+        .from('place_photos')
+        .select('sort_order')
+        .eq('place_id', placeId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      const startOrder = existing && existing.length > 0 ? existing[0].sort_order + 1 : 0;
+      for (const [i, photo] of newPhotos.entries()) {
+        await this.attachPhotoToPlace(placeId, photo, startOrder + i);
+      }
+    }
+  },
+
+  async replaceTagsForPlace(placeId, tagLabels) {
+    // Diffs the place's current tags against the new desired set rather
+    // than blindly deleting-and-reinserting everything, so place_tags
+    // rows for unchanged tags are left untouched.
+    const { data: currentLinks, error: fetchError } = await supabaseClient
+      .from('place_tags')
+      .select('tag_id, tags ( label )')
+      .eq('place_id', placeId);
+    if (fetchError) throw fetchError;
+
+    const currentLabels = new Set((currentLinks || []).map((l) => l.tags?.label).filter(Boolean));
+    const desiredLabels = new Set(tagLabels.map((l) => l.trim().toLowerCase()).filter(Boolean));
+
+    const toRemove = (currentLinks || []).filter((l) => l.tags && !desiredLabels.has(l.tags.label));
+    if (toRemove.length > 0) {
+      const { error: removeError } = await supabaseClient
+        .from('place_tags')
+        .delete()
+        .eq('place_id', placeId)
+        .in('tag_id', toRemove.map((l) => l.tag_id));
+      if (removeError) throw removeError;
+    }
+
+    const labelsToAdd = [...desiredLabels].filter((l) => !currentLabels.has(l));
+    if (labelsToAdd.length > 0) {
+      const tags = await this.ensureTags(labelsToAdd);
+      const { error: addError } = await supabaseClient
+        .from('place_tags')
+        .insert(tags.map((t) => ({ place_id: placeId, tag_id: t.id })));
+      if (addError) throw addError;
+    }
+  },
+
+  async removePhotoFromPlace(photoId) {
+    const { error } = await supabaseClient.from('place_photos').delete().eq('id', photoId);
     if (error) throw error;
   },
 
