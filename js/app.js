@@ -11,6 +11,7 @@
   });
 
   renderCategoryFilters();
+  UI.initCoordSearch();
   await UI.refreshAuthUI();
 
   Api.onAuthChange(() => {

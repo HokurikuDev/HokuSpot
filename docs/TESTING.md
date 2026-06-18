@@ -137,6 +137,17 @@ identifier is still globally accessible to other script tags on the same
 page. `typeof window.Api` is always `'undefined'`; check the bare `Api`
 identifier instead.
 
+### Coordinate search test
+
+Covers the "Go to coordinates" popover: open/close (button toggle, click
+outside, Escape key), input validation (out-of-range lat/lng), the
+successful fly-to behavior, and that a second search replaces the result
+marker rather than stacking markers:
+
+```bash
+(python3 -m http.server 8080 --bind 127.0.0.1 &) ; sleep 1.5 ; node test/coord-search.test.js
+```
+
 ## 5. Live backend check (against your real Supabase project, once configured)
 
 Unlike the e2e test above, this one makes **no mocked network calls** — it

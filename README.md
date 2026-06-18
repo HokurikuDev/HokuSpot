@@ -11,6 +11,9 @@ Prefecture**, Japan — built to run free, forever, on GitHub Pages.
 - A full-bleed, detailed map (MapLibre GL + MapTiler) centered on Ishikawa and
   Toyama, clean and modern in style, built to hold up at the zoom levels
   rural/countryside spots actually need.
+- A "Go to coordinates" search in the header — type a lat/long and the map
+  flies straight there, useful for jumping to a spot you have GPS
+  coordinates for before it's been added as a place.
 - Anyone can create an account and submit a place — name, category, free
   tags, address, description, "what's interesting about it," and photos
   (either uploaded or pasted as a URL). It shows up as a Google-Maps-style

@@ -31,7 +31,13 @@
       <div class="brand">
         <span class="brand__mark">HokuSpot</span>
       </div>
-      <div id="auth-area"><!-- populated by ui.js --></div>
+      <div class="top-bar__right">
+        <div class="coord-search">
+          <button id="btn-coord-search" class="btn btn--ghost" aria-label="Go to coordinates">📍 <span class="btn-label">Go to coordinates</span></button>
+          <div id="coord-search-popover" class="coord-popover" hidden></div>
+        </div>
+        <div id="auth-area"><!-- populated by ui.js --></div>
+      </div>
     </header>
 
     <nav id="category-filters" aria-label="Filter by category">

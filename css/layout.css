@@ -66,11 +66,59 @@
   letter-spacing: 0.02em;
 }
 
+.top-bar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 #auth-area {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
+
+/* ---------------------------------------------------------------------
+   Coordinate search — "Go to coordinates" button + popover with two
+   number inputs. Lives outside #auth-area since it's a map-navigation
+   tool relevant whether or not anyone is signed in.
+   --------------------------------------------------------------------- */
+.coord-search {
+  position: relative;
+}
+
+.coord-popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 25;
+  width: 260px;
+  background: var(--paper);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  padding: var(--space-4);
+}
+.coord-popover[hidden] { display: none; }
+
+.coord-popover .stack { gap: var(--space-3); }
+.coord-popover label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.coord-popover input {
+  font-family: inherit;
+  font-size: 0.92rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--mist);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink);
+}
+.coord-popover input:focus { border-color: var(--moss); }
 
 .user-pill {
   display: flex;
@@ -172,4 +220,6 @@
 @media (max-width: 720px) {
   #top-bar { padding: var(--space-3) var(--space-4); }
   #category-filters { left: var(--space-3); right: var(--space-3); bottom: var(--space-4); }
+  #btn-coord-search .btn-label { display: none; } /* icon-only on small screens */
+  .coord-popover { width: min(260px, calc(100vw - 32px)); }
 }

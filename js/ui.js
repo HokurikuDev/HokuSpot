@@ -126,6 +126,114 @@ const UI = (() => {
   }
 
   // -------------------------------------------------------------------
+  // Coordinate search — "Go to coordinates" button in the header opens a
+  // small popover with lat/lng inputs and flies the map there. No place
+  // lookup involved; this is pure map navigation, available whether or
+  // not anyone is signed in. A temporary marker is dropped at the target
+  // point so it's visually clear where the search landed, and is cleared
+  // the next time the popover opens or a new search runs.
+  // -------------------------------------------------------------------
+  let coordSearchMarker = null;
+
+  function initCoordSearch() {
+    const btn = $('#btn-coord-search');
+    const popover = $('#coord-search-popover');
+    if (!btn || !popover) return;
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !popover.hidden;
+      if (isOpen) {
+        closeCoordPopover();
+      } else {
+        openCoordPopover();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!popover.hidden && !popover.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+        closeCoordPopover();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !popover.hidden) closeCoordPopover();
+    });
+  }
+
+  function openCoordPopover() {
+    const popover = $('#coord-search-popover');
+    popover.innerHTML = `
+      <form id="form-coord-search" class="stack">
+        <label>Latitude
+          <input type="number" name="lat" step="any" placeholder="e.g. 36.8047" required />
+        </label>
+        <label>Longitude
+          <input type="number" name="lng" step="any" placeholder="e.g. 136.9077" required />
+        </label>
+        <p class="form-error" id="coord-search-error" hidden></p>
+        <button type="submit" class="btn btn--accent btn--block btn--small">Go</button>
+      </form>
+    `;
+    popover.hidden = false;
+    $('#form-coord-search input[name="lat"]').focus();
+
+    $('#form-coord-search').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const lat = parseFloat(fd.get('lat'));
+      const lng = parseFloat(fd.get('lng'));
+      const errEl = $('#coord-search-error');
+      errEl.hidden = true;
+
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        errEl.textContent = 'Enter both latitude and longitude as numbers.';
+        errEl.hidden = false;
+        return;
+      }
+      if (lat < -90 || lat > 90) {
+        errEl.textContent = 'Latitude must be between -90 and 90.';
+        errEl.hidden = false;
+        return;
+      }
+      if (lng < -180 || lng > 180) {
+        errEl.textContent = 'Longitude must be between -180 and 180.';
+        errEl.hidden = false;
+        return;
+      }
+
+      goToCoordinates(lat, lng);
+      closeCoordPopover();
+    });
+  }
+
+  function closeCoordPopover() {
+    const popover = $('#coord-search-popover');
+    if (popover) {
+      popover.hidden = true;
+      popover.innerHTML = '';
+    }
+  }
+
+  function goToCoordinates(lat, lng) {
+    const map = MapController.getMap();
+
+    if (coordSearchMarker) {
+      coordSearchMarker.remove();
+      coordSearchMarker = null;
+    }
+
+    const el = document.createElement('div');
+    el.className = 'coord-search-marker';
+    coordSearchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    MapController.flyTo(lng, lat, 14);
+    showToast(`Jumped to ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+  }
+
+  // -------------------------------------------------------------------
   // Place detail card (Google Maps-style)
   // -------------------------------------------------------------------
   async function openPlaceDetail(placeId) {
@@ -565,6 +673,7 @@ const UI = (() => {
     closePlaceDetail,
     openSubmissionForm,
     openModerationQueue,
+    initCoordSearch,
     showToast,
   };
 })();

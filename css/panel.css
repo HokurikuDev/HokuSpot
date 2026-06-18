@@ -239,3 +239,31 @@
   transform: translateX(-50%) rotate(-45deg);
   box-shadow: var(--shadow-card);
 }
+
+/* Marker dropped at the result of a "Go to coordinates" search — a
+   crosshair ring rather than a pin shape, so it reads as "you searched
+   here" rather than "a place" of any kind (category pins are solid
+   dots; the add-place picker is a teardrop). Pulses briefly on arrival
+   to draw the eye without being a persistent distraction. */
+.coord-search-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: rgba(28, 37, 48, 0.12);
+  box-shadow: 0 0 0 3px var(--paper), var(--shadow-card);
+  animation: coord-marker-pulse 1.4s ease-out 2;
+}
+.coord-search-marker::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 6px; height: 6px;
+  background: var(--ink);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+@keyframes coord-marker-pulse {
+  0% { box-shadow: 0 0 0 3px var(--paper), 0 0 0 3px rgba(28, 37, 48, 0.4); }
+  100% { box-shadow: 0 0 0 3px var(--paper), 0 0 0 16px rgba(28, 37, 48, 0); }
+}
