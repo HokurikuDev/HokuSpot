@@ -1,0 +1,182 @@
+/* ============================================================================
+   layout.css — App shell: full-bleed map, floating header, category filters.
+   ============================================================================ */
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+/* MapLibre's own attribution control — restyle to sit quietly in the corner
+   rather than fighting our paper-toned chrome. */
+.maplibregl-ctrl-attrib {
+  background: rgba(247, 243, 234, 0.85) !important;
+  border-radius: var(--radius-sm);
+}
+.maplibregl-ctrl-top-right { top: var(--space-6); }
+.maplibregl-ctrl-group {
+  box-shadow: var(--shadow-card) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+/* ---------------------------------------------------------------------
+   Top bar — floats over the map, holds branding + auth area.
+   --------------------------------------------------------------------- */
+#top-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  pointer-events: none; /* let map drag through the gradient; children re-enable */
+}
+#top-bar > * { pointer-events: auto; }
+
+/* Gradient fade as a pseudo-element behind the content, sized independently
+   of the header's own padding so it can extend further down the map for a
+   graceful fade without pushing the brand/auth row down with it. */
+#top-bar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 140px;
+  background: linear-gradient(to bottom, rgba(28,37,48,0.90) 0%, rgba(28,37,48,0.45) 55%, rgba(28,37,48,0) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--paper);
+}
+.brand__mark {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.brand__region {
+  font-size: 0.78rem;
+  color: rgba(247, 243, 234, 0.75);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#auth-area {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.user-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(247, 243, 234, 0.14);
+  border-radius: 999px;
+  color: var(--paper);
+  font-size: 0.88rem;
+}
+.role-badge {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--gold);
+  color: var(--ink);
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------
+   Category filter bar — bottom-floating, horizontally scrollable.
+   --------------------------------------------------------------------- */
+#category-filters {
+  position: absolute;
+  bottom: var(--space-5);
+  left: var(--space-5);
+  right: var(--space-5);
+  z-index: 20;
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1); /* room for scrollbar without clipping */
+}
+#category-filters::-webkit-scrollbar { height: 4px; }
+
+.filter-chip {
+  flex: 0 0 auto;
+  background: var(--paper);
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+.filter-chip:hover { transform: translateY(-1px); }
+.filter-chip.is-active {
+  border-color: var(--chip-color, var(--moss));
+  color: var(--ink);
+}
+.filter-chip.is-active::before {
+  content: '';
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--chip-color, var(--moss));
+  margin-right: var(--space-2);
+}
+
+/* ---------------------------------------------------------------------
+   Buttons (shared across header, modal, panel)
+   --------------------------------------------------------------------- */
+.btn {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+.btn--accent { background: var(--moss); color: var(--paper); }
+.btn--accent:hover { background: var(--moss-deep); }
+
+.btn--ghost { background: rgba(247, 243, 234, 0.14); color: var(--paper); }
+.btn--ghost:hover { background: rgba(247, 243, 234, 0.24); }
+
+.btn--danger { background: transparent; color: var(--error); border: 1.5px solid var(--error); }
+
+.btn--small { padding: var(--space-1) var(--space-3); font-size: 0.8rem; }
+.btn--block { width: 100%; }
+
+/* Ghost buttons inside light-background contexts (modal, panel) need dark text */
+.modal .btn--ghost, .panel-actions .btn--ghost {
+  background: var(--paper-dim);
+  color: var(--ink);
+}
+.modal .btn--ghost:hover, .panel-actions .btn--ghost:hover {
+  background: var(--mist);
+}
+
+@media (max-width: 720px) {
+  #top-bar { padding: var(--space-3) var(--space-4); }
+  .brand__region { display: none; }
+  #category-filters { left: var(--space-3); right: var(--space-3); bottom: var(--space-4); }
+}

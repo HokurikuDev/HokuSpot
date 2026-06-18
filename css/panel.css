@@ -1,0 +1,173 @@
+/* ============================================================================
+   panel.css — The slide-in place detail card (Google Maps-style).
+
+   Signature touch: a thin contour-line rule under the title, echoing
+   topographic map lines rather than a generic divider, tying the card
+   back to the rural/mountain-village (satoyama) subject of the map.
+   ============================================================================ */
+
+#detail-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(420px, 100vw);
+  background: var(--paper);
+  z-index: 30;
+  box-shadow: var(--shadow-float);
+  transform: translateX(-100%);
+  transition: transform var(--transition-base);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+#detail-panel.is-open {
+  transform: translateX(0);
+}
+
+.panel-loading, .panel-error, .empty-state {
+  padding: var(--space-6);
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+.panel-error { color: var(--error); }
+
+.panel-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 5;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(28, 37, 48, 0.55);
+  color: var(--paper);
+  font-size: 1.4rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.panel-close:hover { background: rgba(28, 37, 48, 0.75); }
+
+.photo-strip {
+  display: flex;
+  overflow-x: auto;
+  height: 220px;
+  flex: 0 0 auto;
+  background: var(--ink);
+}
+.photo-strip img {
+  height: 100%;
+  width: auto;
+  flex: 0 0 auto;
+  object-fit: cover;
+  scroll-snap-align: start;
+}
+.photo-strip { scroll-snap-type: x mandatory; }
+.photo-strip--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(247, 243, 234, 0.5);
+  font-size: 0.85rem;
+}
+
+.panel-body {
+  padding: var(--space-5);
+}
+
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chip-color);
+  margin-bottom: var(--space-2);
+}
+.category-chip::before {
+  content: '';
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--chip-color);
+}
+
+.place-title {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  margin-bottom: var(--space-3);
+  /* Contour-line signature rule beneath the title */
+  padding-bottom: var(--space-3);
+  border-bottom: none;
+  background-image:
+    repeating-linear-gradient(to right, var(--mist) 0 6px, transparent 6px 10px);
+  background-position: bottom left;
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+}
+.featured-star { color: var(--gold); font-size: 1.1rem; }
+
+.place-address {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin: 0 0 var(--space-4);
+}
+.place-description {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  margin: 0 0 var(--space-4);
+}
+
+.place-highlights {
+  background: var(--paper-dim);
+  border-left: 3px solid var(--moss);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.place-highlights h3 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--moss-deep);
+  margin-bottom: var(--space-1);
+}
+.place-highlights p { margin: 0; font-size: 0.9rem; line-height: 1.5; }
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+}
+.tag {
+  font-size: 0.78rem;
+  background: var(--paper-dim);
+  color: var(--ink-soft);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.panel-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Hover popup shown on the map itself before opening the full panel */
+.map-hover-popup .maplibregl-popup-content {
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.82rem;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+}
+.map-hover-popup .maplibregl-popup-tip { border-top-color: var(--ink) !important; }
+
+@media (max-width: 720px) {
+  #detail-panel { width: 100vw; }
+}

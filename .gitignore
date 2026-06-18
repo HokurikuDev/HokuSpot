@@ -1,1 +1,13 @@
-.vs/slnx.sqlite
+# Dependencies (Playwright etc. used only for local testing, not shipped)
+node_modules/
+package-lock.json
+
+# Test artifacts
+test/screenshot-*.png
+
+# OS / editor noise
+.DS_Store
+*.swp
+
+# Local Postgres test DB dumps, if any are ever created
+*.sql.bak

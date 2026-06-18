@@ -1,0 +1,14 @@
+{
+  "name": "hokuriku-spots",
+  "version": "1.0.0",
+  "description": "Community map of points of interest in Hakui (Ishikawa) and Toyama Prefecture, Japan. Static site for GitHub Pages, backed by Supabase.",
+  "private": true,
+  "scripts": {
+    "test": "node test/api.test.js && node test/categories.test.js",
+    "test:api": "node test/api.test.js",
+    "test:categories": "node test/categories.test.js",
+    "test:e2e": "echo 'Run: (python3 -m http.server 8080 --bind 127.0.0.1 &) ; sleep 1.5 ; node test/e2e.test.js  --  see docs/TESTING.md' && exit 1",
+    "screenshot": "echo 'Run: (python3 -m http.server 8080 --bind 127.0.0.1 &) ; sleep 1.5 ; node test/screenshot.js  --  see docs/TESTING.md' && exit 1"
+  },
+  "license": "MIT"
+}
