@@ -86,7 +86,7 @@ function report(name, ok, detail = '') {
   await page.waitForTimeout(1200);
 
   const title = await page.title();
-  report('page title is set correctly', title.includes('Hokuriku'), `got "${title}"`);
+  report('page title is set correctly', title.includes('HokuSpot'), `got "${title}"`);
 
   const mapCanvasCount = await page.locator('#map canvas').count();
   report('MapLibre renders a canvas element inside #map', mapCanvasCount > 0, `found ${mapCanvasCount} canvases`);

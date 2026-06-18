@@ -65,12 +65,6 @@
   font-weight: 700;
   letter-spacing: 0.02em;
 }
-.brand__region {
-  font-size: 0.78rem;
-  color: rgba(247, 243, 234, 0.75);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
 
 #auth-area {
   display: flex;
@@ -177,6 +171,5 @@
 
 @media (max-width: 720px) {
   #top-bar { padding: var(--space-3) var(--space-4); }
-  .brand__region { display: none; }
   #category-filters { left: var(--space-3); right: var(--space-3); bottom: var(--space-4); }
 }
