@@ -100,6 +100,16 @@ worth re-running after any change to `js/map.js`'s `startPinPicker`/
 (python3 -m http.server 8080 --bind 127.0.0.1 &) ; sleep 1.5 ; node test/pin-drop.test.js
 ```
 
+### Moderation queue embed test
+
+Confirms the moderation queue's `places`-to-`profiles` join resolves
+correctly against the live database. Needs no auth and makes no writes —
+safe to run anytime:
+
+```bash
+node test/moderation-embed.test.js
+```
+
 ## 5. Live backend check (against your real Supabase project, once configured)
 
 Unlike the e2e test above, this one makes **no mocked network calls** — it
@@ -163,3 +173,16 @@ Kept here as evidence the tests are doing real work, not just padding:
    clicks at screen coordinates and checks the marker/readout update —
    this class of bug (an overlay silently blocking input) is invisible to
    unit tests and only shows up when something actually clicks the page.
+5. **Moderation queue failed with "Could not embed because more than one
+   relationship was found for 'places' and 'profiles'"** — `places` has
+   two foreign keys into `profiles` (`created_by` and `reviewed_by`), so
+   PostgREST's embedding shorthand `profiles ( display_name )` in
+   `getPendingPlaces()` was ambiguous: it had two valid paths to follow
+   and refused to guess. Fixed by disambiguating with
+   `profiles!created_by ( display_name )`. This only ever surfaces once a
+   table has more than one FK to the same related table — the seed data
+   (inserted directly via SQL with no `created_by`) never exercised this
+   path, which is why it wasn't caught until a real user submission went
+   through the moderation queue. `test/moderation-embed.test.js` reproduces
+   the exact PGRST201 error against the live database and confirms the
+   fixed query resolves it, without needing a real authenticated session.

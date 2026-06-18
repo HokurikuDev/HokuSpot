@@ -242,9 +242,15 @@ const Api = {
   // of whether the UI happens to show these controls)
   // -------------------------------------------------------------------
   async getPendingPlaces() {
+    // `places` has two foreign keys into `profiles` (created_by and
+    // reviewed_by), so PostgREST can't infer which one to embed from a
+    // bare `profiles ( ... )` — it needs to be told explicitly via the
+    // `!column_name` hint. Without this, the query fails with: "Could not
+    // embed because more than one relationship was found for 'places'
+    // and 'profiles'".
     const { data, error } = await supabaseClient
       .from('places')
-      .select('id, name, category_id, lat, lng, description, created_at, created_by, profiles ( display_name )')
+      .select('id, name, category_id, lat, lng, description, created_at, created_by, profiles!created_by ( display_name )')
       .eq('status', 'pending')
       .order('created_at');
     if (error) throw error;
