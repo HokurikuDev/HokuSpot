@@ -199,5 +199,56 @@ const MapController = (() => {
     return map;
   }
 
-  return { init, refreshPlacesInView, setCategoryFilter, flyTo, getMap };
+  // -------------------------------------------------------------------
+  // Pin-picker mode — used by the "Add a place" form to let someone
+  // choose a location by clicking the map. Encapsulated here (rather than
+  // ui.js attaching raw map click listeners directly) so there is exactly
+  // one click handler active at a time, with a single clear lifecycle:
+  // start -> (any number of clicks, each replacing the previous pin) ->
+  // stop. A visible MapLibre Marker is shown at the chosen point so
+  // clicking has obvious, immediate visual feedback.
+  // -------------------------------------------------------------------
+  let pinPickerHandler = null;
+  let pinPickerMarker = null;
+
+  function startPinPicker(onPick) {
+    stopPinPicker(); // guard against double-start leaving two listeners active
+
+    map.getCanvas().style.cursor = 'crosshair';
+
+    pinPickerHandler = (e) => {
+      const { lat, lng } = e.lngLat;
+
+      if (pinPickerMarker) {
+        pinPickerMarker.setLngLat([lng, lat]);
+      } else {
+        const el = document.createElement('div');
+        el.className = 'pin-picker-marker';
+        pinPickerMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([lng, lat])
+          .addTo(map);
+      }
+
+      onPick({ lat, lng });
+    };
+
+    map.on('click', pinPickerHandler);
+  }
+
+  function stopPinPicker() {
+    if (pinPickerHandler) {
+      map.off('click', pinPickerHandler);
+      pinPickerHandler = null;
+    }
+    if (pinPickerMarker) {
+      pinPickerMarker.remove();
+      pinPickerMarker = null;
+    }
+    if (map) map.getCanvas().style.cursor = '';
+  }
+
+  return {
+    init, refreshPlacesInView, setCategoryFilter, flyTo, getMap,
+    startPinPicker, stopPinPicker,
+  };
 })();

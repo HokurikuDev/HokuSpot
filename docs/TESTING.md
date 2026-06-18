@@ -89,6 +89,17 @@ npx playwright install --with-deps chromium   # one-time browser download
 (python3 -m http.server 8080 --bind 127.0.0.1 &) ; sleep 1.5 ; node test/e2e.test.js
 ```
 
+### Pin-drop interaction test
+
+A dedicated test reproduces the "Add a place" pin-picking flow click by
+click — this is the test that caught the bug described below, and it's
+worth re-running after any change to `js/map.js`'s `startPinPicker`/
+`stopPinPicker` or the submit-panel markup in `js/ui.js`:
+
+```bash
+(python3 -m http.server 8080 --bind 127.0.0.1 &) ; sleep 1.5 ; node test/pin-drop.test.js
+```
+
 ## 5. Live backend check (against your real Supabase project, once configured)
 
 Unlike the e2e test above, this one makes **no mocked network calls** — it
@@ -137,3 +148,18 @@ Kept here as evidence the tests are doing real work, not just padding:
    calling `auth.uid()` to fail with a permission error — a reminder that
    real Supabase grants this by default, so the *stub* needed fixing to
    match reality, not the policies themselves.
+4. **"Add a place" pin-dropping didn't work at all** — the submission
+   form originally opened inside `#modal-root`, a full-screen
+   `position: fixed; inset: 0` overlay sitting at a higher z-index than
+   the map. The instructions said "click the map to drop a pin," but the
+   map was completely covered by the modal backdrop, so there was no way
+   for a click to ever reach it. Fixed by moving the form into its own
+   slide-in side panel (`#submit-panel`, same pattern as the existing
+   place-detail panel) that leaves the map visible and clickable beside
+   it. A second, related bug in the original code — two stacked map click
+   listeners (`map.once` plus a `map.on` "re-armer") — was replaced with a
+   single owned listener via `MapController.startPinPicker()`. Caught and
+   verified fixed by `test/pin-drop.test.js`, which simulates real mouse
+   clicks at screen coordinates and checks the marker/readout update —
+   this class of bug (an overlay silently blocking input) is invisible to
+   unit tests and only shows up when something actually clicks the page.

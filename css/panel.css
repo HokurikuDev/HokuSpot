@@ -171,3 +171,71 @@
 @media (max-width: 720px) {
   #detail-panel { width: 100vw; }
 }
+
+/* ---------------------------------------------------------------------
+   Submit panel — same slide-in pattern as #detail-panel, but anchored to
+   the right edge so it can stay open *alongside* a visible, clickable
+   map. (The form used to live in a full-screen modal that completely
+   covered the map, which made "click the map to drop a pin" impossible —
+   this panel is what replaced that.)
+   --------------------------------------------------------------------- */
+#submit-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(420px, 100vw);
+  background: var(--paper);
+  z-index: 30;
+  box-shadow: var(--shadow-float);
+  transform: translateX(100%);
+  transition: transform var(--transition-base);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+#submit-panel.is-open {
+  transform: translateX(0);
+}
+
+.submit-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--mist);
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  z-index: 1;
+}
+.submit-panel__header h2 { font-size: 1.15rem; }
+
+.submit-panel__body { padding: var(--space-5); }
+
+@media (max-width: 720px) {
+  #submit-panel { width: 100vw; }
+}
+
+/* Visible marker dropped on the map while picking a location in the
+   "Add a place" form. A simple inverted-teardrop shape in the clay accent
+   color, distinct from the moss/category-colored dots used for existing
+   approved places, so it's unmistakably "your pending choice." */
+.pin-picker-marker {
+  width: 28px;
+  height: 28px;
+  position: relative;
+}
+.pin-picker-marker::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  background: var(--clay);
+  border: 3px solid var(--paper);
+  border-radius: 50% 50% 50% 0;
+  transform: translateX(-50%) rotate(-45deg);
+  box-shadow: var(--shadow-card);
+}

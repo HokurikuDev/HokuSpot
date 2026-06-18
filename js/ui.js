@@ -210,36 +210,64 @@ const UI = (() => {
 
   // -------------------------------------------------------------------
   // Submission form
+  //
+  // This used to open inside the full-screen modal (#modal-root), which
+  // covers the entire viewport including the map — so "click the map to
+  // drop a pin" was never actually possible; the click had nowhere to
+  // land but the modal backdrop. It now opens in its own slide-in panel
+  // (#submit-panel, same pattern as #detail-panel) that leaves the map
+  // visible and clickable beside it. Pin placement itself is delegated to
+  // MapController.startPinPicker(), which owns a single click listener
+  // and a visible marker for the chosen point.
   // -------------------------------------------------------------------
-  let pendingPin = null; // { lat, lng } chosen via map click while form is open
+  let pendingPin = null; // { lat, lng } chosen via map click while the panel is open
 
   function openSubmissionForm() {
     const cats = Categories.all();
-    openModal(`
-      <form id="form-submit" class="stack">
-        <label>Name <input type="text" name="name" required maxlength="120" /></label>
-        <label>Category
-          <select name="categoryId" required>
-            ${cats.map((c) => `<option value="${c.id}">${escapeHtml(c.label_en)}</option>`).join('')}
-          </select>
-        </label>
-        <div class="pin-picker">
-          <p class="form-hint">Click the map to drop a pin at the location, then come back here.</p>
-          <p id="pin-readout" class="pin-readout">No location chosen yet</p>
-        </div>
-        <label>Address <input type="text" name="address" maxlength="200" placeholder="Optional — helps others find it" /></label>
-        <label>Description <textarea name="description" rows="3" maxlength="1000"></textarea></label>
-        <label>What's interesting about it? <textarea name="highlights" rows="3" maxlength="1000" placeholder="History, access notes, best time to visit…"></textarea></label>
-        <label>Tags <input type="text" name="tags" placeholder="comma, separated, tags" /></label>
-        <label>Photo URL <input type="url" name="photoUrl" placeholder="https://… (optional)" /></label>
-        <label>Or upload a photo <input type="file" name="photoFile" accept="image/jpeg,image/png,image/webp" /></label>
-        <p class="form-error" id="submit-error" hidden></p>
-        <p class="form-hint">Your submission goes to a moderator for review before it appears on the public map.</p>
-        <button type="submit" class="btn btn--accent btn--block">Submit for review</button>
-      </form>
-    `, { title: 'Add a place', onClose: () => { pendingPin = null; } });
+    const panel = $('#submit-panel');
+    pendingPin = null;
 
-    enablePinPicking();
+    panel.innerHTML = `
+      <div class="submit-panel__header">
+        <h2>Add a place</h2>
+        <button class="modal__close" id="btn-close-submit" aria-label="Close">&times;</button>
+      </div>
+      <div class="submit-panel__body">
+        <form id="form-submit" class="stack">
+          <label>Name <input type="text" name="name" required maxlength="120" /></label>
+          <label>Category
+            <select name="categoryId" required>
+              ${cats.map((c) => `<option value="${c.id}">${escapeHtml(c.label_en)}</option>`).join('')}
+            </select>
+          </label>
+          <div class="pin-picker">
+            <p class="form-hint">Click anywhere on the map to drop a pin at the location. Click again to move it.</p>
+            <p id="pin-readout" class="pin-readout">No location chosen yet</p>
+          </div>
+          <label>Address <input type="text" name="address" maxlength="200" placeholder="Optional — helps others find it" /></label>
+          <label>Description <textarea name="description" rows="3" maxlength="1000"></textarea></label>
+          <label>What's interesting about it? <textarea name="highlights" rows="3" maxlength="1000" placeholder="History, access notes, best time to visit…"></textarea></label>
+          <label>Tags <input type="text" name="tags" placeholder="comma, separated, tags" /></label>
+          <label>Photo URL <input type="url" name="photoUrl" placeholder="https://… (optional)" /></label>
+          <label>Or upload a photo <input type="file" name="photoFile" accept="image/jpeg,image/png,image/webp" /></label>
+          <p class="form-error" id="submit-error" hidden></p>
+          <p class="form-hint">Your submission goes to a moderator for review before it appears on the public map.</p>
+          <button type="submit" class="btn btn--accent btn--block">Submit for review</button>
+        </form>
+      </div>
+    `;
+    panel.classList.add('is-open');
+
+    MapController.startPinPicker(({ lat, lng }) => {
+      pendingPin = { lat, lng };
+      const readout = $('#pin-readout');
+      if (readout) {
+        readout.textContent = `Pinned at ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        readout.classList.add('is-set');
+      }
+    });
+
+    $('#btn-close-submit').addEventListener('click', closeSubmissionForm);
 
     $('#form-submit').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -272,7 +300,7 @@ const UI = (() => {
           tagLabels,
           photos,
         });
-        closeModal();
+        closeSubmissionForm();
         showToast('Submitted! It will appear once a moderator approves it.');
       } catch (err) {
         errEl.textContent = err.message;
@@ -281,26 +309,10 @@ const UI = (() => {
     });
   }
 
-  function enablePinPicking() {
-    const map = MapController.getMap();
-    const handler = (e) => {
-      pendingPin = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-      const readout = $('#pin-readout');
-      if (readout) {
-        readout.textContent = `Pinned at ${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`;
-        readout.classList.add('is-set');
-      }
-    };
-    map.once('click', handler);
-    // Re-arm on every click while the modal is open, in case they want to adjust.
-    const rearm = () => {
-      if (!$('#form-submit')) {
-        map.off('click', rearm);
-        return;
-      }
-      map.once('click', handler);
-    };
-    map.on('click', rearm);
+  function closeSubmissionForm() {
+    $('#submit-panel').classList.remove('is-open');
+    MapController.stopPinPicker();
+    pendingPin = null;
   }
 
   // -------------------------------------------------------------------
