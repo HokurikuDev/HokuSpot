@@ -27,16 +27,17 @@ const CONFIG = {
   MAPTILER_KEY: 'puMORbf8chI5eyoSvAzH',
 
   // --- Map defaults ---------------------------------------------------------
-  // Centered roughly between Hakui and Toyama City, framing both areas.
-  MAP_CENTER: [136.95, 36.80],
-  MAP_DEFAULT_ZOOM: 9.2,
+  // Centered to frame all of Ishikawa Prefecture (Kanazawa up through the
+  // full length of the Noto Peninsula) alongside Toyama Prefecture.
+  MAP_CENTER: [136.95, 36.95],
+  MAP_DEFAULT_ZOOM: 8.3,
   MAP_MIN_ZOOM: 7,
   MAP_MAX_ZOOM: 18,
 
-  // Rough bounding box covering Hakui (Ishikawa) + Toyama Prefecture.
-  // Used to gently constrain panning and for "reset view" button.
-  // [west, south, east, north]
-  REGION_BOUNDS: [136.20, 36.25, 137.80, 37.10],
+  // Bounding box covering all of Ishikawa Prefecture (south to Kanazawa,
+  // north through the Noto Peninsula tip near Suzu at ~37.45N) + Toyama
+  // Prefecture. [west, south, east, north]
+  REGION_BOUNDS: [136.20, 36.20, 137.80, 37.55],
 
   // Category and tag display is sourced from the database (public.categories)
   // at runtime so the fixed list can be edited via SQL without redeploying

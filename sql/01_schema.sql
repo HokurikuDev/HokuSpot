@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Hokuriku Spots — Core Schema
--- Project: Map of interesting/abandoned/scenic places in Hakui & Toyama
+-- Project: Map of interesting/abandoned/scenic places in Ishikawa & Toyama
 -- Target: Supabase (Postgres + PostGIS)
 -- ============================================================================
 -- Run this in the Supabase SQL Editor (Project > SQL Editor > New query).

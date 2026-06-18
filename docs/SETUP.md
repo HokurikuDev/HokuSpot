@@ -1,7 +1,7 @@
 # Hokuriku Spots — Setup Guide
 
 A community map of tourist spots, abandoned places, interesting roads, and
-other points of interest across **Hakui (Ishikawa)** and **Toyama
+other points of interest across **Ishikawa** and **Toyama
 Prefecture**, Japan. Built to run entirely on **GitHub Pages** (static
 hosting, no server) with **Supabase** as the backend (auth, database,
 storage) and **MapTiler + MapLibre GL** for the map itself.
@@ -139,7 +139,7 @@ python3 -m http.server 8080
 ```
 
 Confirm:
-- The map loads and is centered on Hakui/Toyama
+- The map loads and is centered on Ishikawa/Toyama
 - Category filter chips appear along the bottom
 - "Sign in" lets you create an account and sign in
 - "+ Add a place" lets you drop a pin and submit (it should NOT appear on

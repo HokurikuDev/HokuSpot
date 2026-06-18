@@ -1,14 +1,14 @@
 # Hokuriku Spots
 
 A community map of tourist spots, abandoned places, interesting roads, and
-other points of interest across **Hakui (Ishikawa)** and **Toyama
+other points of interest across **Ishikawa** and **Toyama
 Prefecture**, Japan — built to run free, forever, on GitHub Pages.
 
 ![Map screenshot](test/screenshot-main.png)
 
 ## What this is
 
-- A full-bleed, detailed map (MapLibre GL + MapTiler) centered on Hakui and
+- A full-bleed, detailed map (MapLibre GL + MapTiler) centered on Ishikawa and
   Toyama, clean and modern in style, built to hold up at the zoom levels
   rural/countryside spots actually need.
 - Anyone can create an account and submit a place — name, category, free
