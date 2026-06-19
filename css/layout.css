@@ -19,7 +19,13 @@
   background: rgba(247, 243, 234, 0.85) !important;
   border-radius: var(--radius-sm);
 }
-.maplibregl-ctrl-top-right { top: var(--space-6); }
+.maplibregl-ctrl-top-right {
+  /* Push below the floating header instead of a fixed guess — the header's
+     real height varies (wraps to two lines on narrow screens), so anchoring
+     to its rendered box keeps MapLibre's own controls (zoom, compass,
+     geolocate) from ever sitting under the brand/auth row. */
+  top: calc(var(--top-bar-height, 64px) + var(--space-3));
+}
 .maplibregl-ctrl-group {
   box-shadow: var(--shadow-card) !important;
   border-radius: var(--radius-sm) !important;

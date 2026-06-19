@@ -13,6 +13,7 @@
   renderCategoryFilters();
   UI.initCoordSearch();
   await UI.refreshAuthUI();
+  observeTopBarHeight();
 
   Api.onAuthChange(() => {
     UI.refreshAuthUI();
@@ -20,6 +21,23 @@
 
   document.getElementById('btn-close-detail-outer')?.addEventListener('click', UI.closePlaceDetail);
 })();
+
+// Keep MapLibre's own top-right controls (zoom, compass, geolocate) below
+// the floating header at all times. The header's height isn't fixed — it
+// wraps to two lines once the auth pill + coord-search button no longer
+// fit on one row (narrow screens, long display names) — so we measure the
+// real rendered box instead of guessing a static offset in CSS.
+function observeTopBarHeight() {
+  const bar = document.getElementById('top-bar');
+  if (!bar || typeof ResizeObserver === 'undefined') return;
+
+  const apply = () => {
+    document.documentElement.style.setProperty('--top-bar-height', `${bar.offsetHeight}px`);
+  };
+
+  new ResizeObserver(apply).observe(bar);
+  apply();
+}
 
 function renderCategoryFilters() {
   const bar = document.getElementById('category-filters');

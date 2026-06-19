@@ -75,7 +75,19 @@ function report(name, ok, detail = '') {
   await page.route('**/rest/v1/places*', (route) => {
     const url = route.request().url();
     const method = route.request().method();
-    if (method === 'PATCH') return route.fulfill({ status: 204, body: '' });
+    if (method === 'PATCH') {
+      // Real Supabase, with .select() chained after .update() (as
+      // js/supabase-client.js now does), responds 200 with the updated
+      // row(s) as a JSON array — not 204/empty.
+      const body = route.request().postDataJSON();
+      const idMatch = url.match(/id=eq\.([^&]+)/);
+      const patchedId = idMatch ? decodeURIComponent(idMatch[1]) : null;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: patchedId, ...body }]),
+      });
+    }
     if (url.includes('created_by') && !url.includes('place_photos') && url.includes('order=created_at')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MY_SUBMISSIONS) });
     }

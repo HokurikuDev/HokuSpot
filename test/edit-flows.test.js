@@ -63,8 +63,20 @@ function report(name, ok, detail = '') {
 
     if (method === 'PATCH') {
       // Capture what an update request actually sent, for assertions below.
-      updateCalls.push({ url, body: route.request().postDataJSON() });
-      return route.fulfill({ status: 204, body: '' });
+      const body = route.request().postDataJSON();
+      updateCalls.push({ url, body });
+      // Real Supabase, with .select() chained after .update() (as
+      // js/supabase-client.js now does), responds 200 with the updated
+      // row(s) as a JSON array — not 204/empty. Mirror that here so this
+      // mock matches production and would catch the same silent-failure
+      // bug the real .select() check is guarding against.
+      const idMatch = url.match(/id=eq\.([^&]+)/);
+      const patchedId = idMatch ? decodeURIComponent(idMatch[1]) : null;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: patchedId, ...body }]),
+      });
     }
     if (url.includes('select=') && url.includes('place_photos')) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(APPROVED_PLACE_DETAIL) });

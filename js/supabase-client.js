@@ -232,8 +232,23 @@ const Api = {
     if (lng !== undefined) updates.lng = lng;
 
     if (Object.keys(updates).length > 0) {
-      const { error } = await supabaseClient.from('places').update(updates).eq('id', placeId);
+      // IMPORTANT: .select().single() must be chained after .update().
+      // Without it, Supabase/PostgREST returns 204 No Content on every
+      // PATCH regardless of how many rows actually matched — including
+      // zero. If RLS silently blocks the write (e.g. a moderator update
+      // that didn't pass `is_moderator()` for some reason), `error` stays
+      // null and this code would report success even though nothing was
+      // saved. .single() forces PostgREST to return the updated row (or
+      // throw a real error when zero rows come back), so a swallowed RLS
+      // rejection surfaces as a thrown error instead of a false "saved".
+      const { data, error } = await supabaseClient
+        .from('places')
+        .update(updates)
+        .eq('id', placeId)
+        .select()
+        .single();
       if (error) throw error;
+      if (!data) throw new Error('Update did not save — you may not have permission to edit this place.');
     }
 
     if (tagLabels !== undefined) {

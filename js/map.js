@@ -28,10 +28,28 @@ const MapController = (() => {
     });
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-right');
-    map.addControl(
-      new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }),
-      'top-right'
-    );
+
+    // High accuracy with no timeout makes the browser hold out for a
+    // GPS-grade fix that desktops/laptops (no GPS chip) often never get —
+    // the request then errors out with POSITION_UNAVAILABLE, and because
+    // trackUserLocation keeps retrying the same options, MapLibre's button
+    // gets stuck showing its crossed-out error icon permanently. A timeout
+    // lets it fall back to network/Wi-Fi-based positioning instead.
+    const geolocateControl = new maplibregl.GeolocateControl({
+      positionOptions: {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 60000,
+      },
+      trackUserLocation: true,
+      showUserLocation: true,
+      fitBoundsOptions: { maxZoom: 15 },
+    });
+    geolocateControl.on('error', (err) => {
+      console.warn('Geolocation failed:', err?.message || err);
+    });
+    map.addControl(geolocateControl, 'top-right');
+
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
 
     map.on('load', () => {
@@ -110,6 +128,7 @@ const MapController = (() => {
     });
 
     map.on('click', 'clusters', (e) => {
+      if (pinPickerHandler) return;
       const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
       const clusterId = features[0].properties.cluster_id;
       map.getSource('places').getClusterExpansionZoom(clusterId, (err, zoom) => {
@@ -119,6 +138,7 @@ const MapController = (() => {
     });
 
     map.on('click', 'unclustered-point', (e) => {
+      if (pinPickerHandler) return; // editing a pin right now — don't reopen the detail panel
       const props = e.features[0].properties;
       onPlaceClick(props.id);
     });
